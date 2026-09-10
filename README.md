@@ -152,7 +152,7 @@ make test
 `make test` builds and runs the suite in one step (matching what CI does). Or compiling manually with GCC:
 
 ```
-gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c src/cli.c tests/test.c tests/testMain.c -o test_runner
+gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c src/cli.c test/test.c test/testMain.c -o test_runner
 ./test_runner
 ```
 
