@@ -6,7 +6,7 @@ SRCS = src/main.c src/db.c src/repl.c
 OBJS = $(SRCS:.c=.o)
  
 TEST_TARGET = test_runner
-TEST_SRCS = src/db.c src/repl.c tests/test.c tests/testMain.c
+TEST_SRCS = src/db.c src/repl.c test/test.c test/testMain.c
  
 all: $(TARGET)
  
