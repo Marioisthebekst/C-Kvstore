@@ -1,4 +1,5 @@
 # C-KVStore ⚡
+[![C/C++ CI](https://github.com/Marioisthebekst/C-Kvstore/actions/workflows/ci.yml/badge.svg)](https://github.com/Marioisthebekst/C-Kvstore/actions/workflows/ci.yml)
 
 A lightweight, high-performance in-memory key-value store implemented in C (C99). It features a dynamic hash table with separate chaining for collision resolution, TTL-based key expiration, an interactive shell (REPL), and file-backed persistence.
 
