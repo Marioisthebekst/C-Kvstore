@@ -39,7 +39,7 @@ A lightweight, high-performance in-memory key-value store implemented in C (C99)
 ### Example Session
 
 ```
-Key-Value Store initialized. Type commands (e.g., SET, GET, KEYS, EXIT):
+Key-Value Store initialized (size=16, capacity=100). Type commands (e.g., SET, GET, KEYS, EXIT):
 > SET name "Alice Doe"
 Key Set Successfully!
 > SETEX session abc123 30
@@ -61,7 +61,40 @@ Table saved successfully!
 
 ## 🧠 LRU Eviction
 
-The store is created with `createTable(size, capacity)`: `size` is the initial hash table capacity, and `capacity` is the maximum number of live keys the store will hold. Once the store is full, inserting a new key evicts the least recently used one first — both `GET` and `SET` count as a "use" and move a key back to the front of the eviction order. Pass `capacity <= 0` for an unbounded store (the default used throughout the test suite). The running key-value store (`src/main.c`) currently starts with `createTable(5, 6)` — a max of 6 live keys — as a demonstration; adjust this call to change the limit.
+The store is created with `createTable(size, capacity)`: `size` is the initial hash table bucket count, and `capacity` is the maximum number of live keys the store will hold. Once the store is full, inserting a new key evicts the least recently used one first — both `GET` and `SET` count as a "use" and move a key back to the front of the eviction order. Pass `capacity <= 0` for an unbounded store (the default used throughout the test suite). Both values are configurable from the command line — see the Command-Line Options section below.
+
+---
+
+## ⚙️ Command-Line Options
+
+```
+./kv_store [OPTIONS]
+```
+
+| Flag | Description | Default |
+| :--- | :--- | :--- |
+| `-c`, `--capacity <num>` | Maximum number of live keys before LRU eviction kicks in | `100` |
+| `-s`, `--size <num>` | Initial hash table bucket count | `16` |
+| `-h`, `--help` | Print usage and exit | — |
+
+```
+$ ./kv_store -c 3 -s 8
+Key-Value Store initialized (size=8, capacity=3). Type commands (e.g., SET, GET, KEYS, EXIT):
+> SET a 1
+Key Set Successfully!
+> SET b 2
+Key Set Successfully!
+> SET c 3
+Key Set Successfully!
+> SET d 4
+Key Set Successfully!
+> KEYS
+Key: c
+Key: d
+Key: b
+```
+
+`a` was silently evicted once the 4th key pushed the store past its capacity of 3 — it was the least recently used at that point. (`KEYS` lists surviving keys in hash-bucket order, not LRU order.) `--capacity` and `--size` must be positive integers; passing zero, a negative number, or an unparsable value exits with an error before the store starts.
 
 ---
 
@@ -70,18 +103,21 @@ The store is created with `createTable(size, capacity)`: `size` is the initial h
 ```
 c-kvstore/
 ├── src/
-│   ├── db.c        - Core hash table engine: insert, get, delete, resize/shrink, TTL logic
+│   ├── db.c        - Core hash table engine: insert, get, delete, resize/shrink, TTL logic, LRU eviction
 │   ├── repl.c       - REPL parsing, quote handling, command dispatch
-│   └── main.c       - Entry point for the interactive store
+│   ├── cli.c        - Command-line argument parsing (--capacity, --size, --help)
+│   └── main.c       - Entry point: wires CLI options into the store and starts the REPL
 ├── include/
 │   ├── db.h
-│   └── repl.h
-├── tests/
+│   ├── repl.h
+│   ├──test.h
+│   └── cli.h
+├── test/
 │   ├── test.c        - Unit and integration test suite
-│   ├── test.h
 │   └── testMain.c    - Test runner entry point (kept separate from src/main.c)
 ├── Makefile
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
@@ -101,6 +137,12 @@ make all
 ./kv_store
 ```
 
+Or with custom options (see the Command-Line Options section above):
+
+```
+./kv_store --capacity 500 --size 64
+```
+
 ### Running the Test Suite
 
 ```
@@ -110,7 +152,7 @@ make test
 `make test` builds and runs the suite in one step (matching what CI does). Or compiling manually with GCC:
 
 ```
-gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c tests/test.c tests/testMain.c -o test_runner
+gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c src/cli.c tests/test.c tests/testMain.c -o test_runner
 ./test_runner
 ```
 
@@ -131,3 +173,9 @@ make clean
 - [x] LRU memory eviction policy
 - [ ] Lightweight socket-based TCP server interface
 - [ ] LFU memory eviction policy
+
+---
+
+## 📜 License
+
+This project is licensed under the terms of the [LICENSE](LICENSE) file included in this repository.
