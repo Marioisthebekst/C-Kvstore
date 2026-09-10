@@ -6,6 +6,7 @@ all: src/db.c src/repl.c src/main.c
 
 test: src/db.c src/repl.c test/test.c
 	$(CC) $(CFLAGS) src/db.c src/repl.c test/test.c -o test_runner
+	./test_runner
 
 clean:
 	rm -f kv_store test_runner *.exe *.o

@@ -2,22 +2,19 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Compile project and tests
+      - name: Build and Run Tests
         run: |
           make all
           make test
-
-      - name: Run test suite
-        run: ./test_runner
