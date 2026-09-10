@@ -5,6 +5,7 @@
 #include <time.h>
 #include "db.h"
 #include "repl.h"
+#include "cli.h"
 #include "test.h"
 
 void testCreateFree(void) {
@@ -270,6 +271,109 @@ void testLruEviction(void) {
 
     printf("[PASS] lru_eviction\n");
 }
+void testCliArgs(void) {
+    printf("--- test_cli_args ---\n");
+
+    {
+        char* argv[] = { "kv_store" };
+        CliOptions opts = parseArgs(1, argv);
+        assert(opts.size == DEFAULT_INITIAL_SIZE);
+        assert(opts.capacity == DEFAULT_CAPACITY);
+        assert(opts.help == 0);
+        assert(opts.valid == 1);
+    }
+    printf("[PASS] defaults with no arguments\n");
+
+    {
+        char* argv[] = { "kv_store", "-c", "50" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.capacity == 50);
+        assert(opts.size == DEFAULT_INITIAL_SIZE);
+        assert(opts.valid == 1);
+    }
+    {
+        char* argv[] = { "kv_store", "--capacity", "50" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.capacity == 50);
+    }
+    printf("[PASS] -c / --capacity override the default\n");
+
+    {
+        char* argv[] = { "kv_store", "-s", "32" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.size == 32);
+        assert(opts.capacity == DEFAULT_CAPACITY);
+    }
+    {
+        char* argv[] = { "kv_store", "--size", "32" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.size == 32);
+    }
+    printf("[PASS] -s / --size override the default\n");
+
+    {
+        char* argv[] = { "kv_store", "-s", "8", "-c", "20" };
+        CliOptions opts = parseArgs(5, argv);
+        assert(opts.size == 8);
+        assert(opts.capacity == 20);
+        assert(opts.valid == 1);
+    }
+    printf("[PASS] combining -s and -c together\n");
+
+    {
+        char* argv[] = { "kv_store", "-h" };
+        CliOptions opts = parseArgs(2, argv);
+        assert(opts.help == 1);
+    }
+    {
+        char* argv[] = { "kv_store", "--help" };
+        CliOptions opts = parseArgs(2, argv);
+        assert(opts.help == 1);
+    }
+    {
+        char* argv[] = { "kv_store", "-c", "50", "-h" };
+        CliOptions opts = parseArgs(4, argv);
+        assert(opts.help == 1);
+    }
+    printf("[PASS] -h / --help is detected\n");
+
+    {
+        char* argv[] = { "kv_store", "-c", "0" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.valid == 0);
+    }
+    {
+        char* argv[] = { "kv_store", "-c", "-5" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.valid == 0);
+    }
+    {
+        char* argv[] = { "kv_store", "-s", "0" };
+        CliOptions opts = parseArgs(3, argv);
+        assert(opts.valid == 0);
+    }
+    printf("[PASS] zero/negative size or capacity is rejected as invalid\n");
+
+    {
+        char* argv[] = { "kv_store", "-c" };
+        CliOptions opts = parseArgs(2, argv);
+        assert(opts.capacity == DEFAULT_CAPACITY);
+        assert(opts.size == DEFAULT_INITIAL_SIZE);
+        assert(opts.valid == 1);
+    }
+    printf("[PASS] flag with a missing value is ignored, defaults kept\n");
+
+    {
+        char* argv[] = { "kv_store", "--verbose", "-c", "40" };
+        CliOptions opts = parseArgs(4, argv);
+        assert(opts.capacity == 40);
+        assert(opts.valid == 1);
+    }
+    printf("[PASS] unrecognized flag is ignored without affecting the rest\n");
+
+    printf("[PASS] cli_args\n");
+}
+
 void testReplIntegration(void) {
     printf("--- test_repl_integration ---\n");
 

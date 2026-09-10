@@ -10,6 +10,7 @@ int main(void) {
     testTtlAbsolute();
     testIncrDecr();
     testLruEviction();
+    testCliArgs();
     testReplIntegration();
     testSaveLoad();
 
