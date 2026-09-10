@@ -9,7 +9,8 @@ A lightweight, high-performance in-memory key-value store implemented in C (C99)
 
 - **Hash Table Architecture:** O(1) average-time complexity for core operations (`SET`, `GET`, `DELETE`) with linked-list collision resolution.
 - **Dynamic Resizing:** Automated rehashing and capacity scaling (grow and shrink) to maintain an optimal load factor.
-- **Key Expiration (TTL):** Set keys with a relative time-to-live or an absolute Unix timestamp; expired keys are lazily evicted on access.
+- **Key Expiration (TTL):** Set keys with a relative time-to-live or an absolute Unix timestamp; expired keys are lazily evicted on access and periodically swept from the LRU tail during REPL activity.
+- **LRU Memory Eviction:** The store can be created with a maximum item capacity; once exceeded, the least recently used key is automatically evicted to make room, tracked via an O(1) doubly linked list touched on every read and write.
 - **Atomic Counters:** `INCR` / `DECR` for integer-valued keys, Redis-style.
 - **Interactive REPL:** Built-in command interpreter supporting quoted strings for values containing spaces.
 - **Disk Persistence:** Safe file serialization and deserialization via `SAVE` and `LOAD` commands, TTL included.
@@ -58,6 +59,12 @@ Table saved successfully!
 
 ---
 
+## 🧠 LRU Eviction
+
+The store is created with `createTable(size, capacity)`: `size` is the initial hash table capacity, and `capacity` is the maximum number of live keys the store will hold. Once the store is full, inserting a new key evicts the least recently used one first — both `GET` and `SET` count as a "use" and move a key back to the front of the eviction order. Pass `capacity <= 0` for an unbounded store (the default used throughout the test suite). The running key-value store (`src/main.c`) currently starts with `createTable(5, 6)` — a max of 6 live keys — as a demonstration; adjust this call to change the limit.
+
+---
+
 ## 📂 Project Structure
 
 ```
@@ -91,20 +98,20 @@ c-kvstore/
 
 ```
 make all
-./kv_store.exe
+./kv_store
 ```
 
 ### Running the Test Suite
 
 ```
 make test
-./test_runner.exe
 ```
 
-Or compiling manually with GCC:
+`make test` builds and runs the suite in one step (matching what CI does). Or compiling manually with GCC:
 
 ```
-gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c tests/test.c tests/testMain.c -o test_runner.exe
+gcc -Wall -Wextra -std=c99 -Iinclude -Itests src/db.c src/repl.c tests/test.c tests/testMain.c -o test_runner
+./test_runner
 ```
 
 ### Cleaning Build Artifacts
@@ -120,6 +127,7 @@ make clean
 - [x] KEYS command to enumerate all stored keys
 - [x] Time-To-Live (TTL) key expiration (SETEX / SETAT)
 - [x] INCR / DECR atomic counters
-- [ ] Automated CI pipeline via GitHub Actions
+- [x] Automated CI pipeline via GitHub Actions
+- [x] LRU memory eviction policy
 - [ ] Lightweight socket-based TCP server interface
-- [ ] LRU/LFU memory eviction policies
+- [ ] LFU memory eviction policy

@@ -1,12 +1,25 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -Iinclude
-
-all: src/db.c src/repl.c src/main.c
-	$(CC) $(CFLAGS) src/db.c src/repl.c src/main.c -o kv_store
-
-test: src/db.c src/repl.c test/test.c
-	$(CC) $(CFLAGS) src/db.c src/repl.c test/test.c -o test_runner
-	./test_runner
-
+TARGET = kv_store
+ 
+SRCS = src/main.c src/db.c src/repl.c
+OBJS = $(SRCS:.c=.o)
+ 
+TEST_TARGET = test_runner
+TEST_SRCS = src/db.c src/repl.c tests/test.c tests/testMain.c
+ 
+all: $(TARGET)
+ 
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+ 
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+ 
+test: $(TEST_SRCS)
+	$(CC) $(CFLAGS) -Itests $(TEST_SRCS) -o $(TEST_TARGET)
+	./$(TEST_TARGET)
+ 
 clean:
-	rm -f kv_store test_runner *.exe *.o
+	rm -f $(OBJS) $(TARGET) $(TARGET).exe $(TEST_TARGET) $(TEST_TARGET).exe
+ 

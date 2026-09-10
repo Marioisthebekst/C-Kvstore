@@ -9,6 +9,7 @@ int main(void) {
     testTtlRelative();
     testTtlAbsolute();
     testIncrDecr();
+    testLruEviction();
     testReplIntegration();
     testSaveLoad();
 

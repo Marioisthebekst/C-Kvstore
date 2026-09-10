@@ -2,7 +2,7 @@
 #include "repl.h"
 
 int main(void) {
-    HashTable* ht = createTable(5);
+    HashTable* ht = createTable(5,6);
     if (ht == NULL) {
         fprintf(stderr, "Error: Failed to initialize hash table\n");
         return 1;

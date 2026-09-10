@@ -8,6 +8,7 @@ void testResizeShrink(void);
 void testTtlRelative(void);
 void testTtlAbsolute(void);
 void testIncrDecr(void);
+void testLruEviction(void);
 void testReplIntegration(void);
 void testSaveLoad(void);
 

@@ -10,16 +10,22 @@ typedef struct Node {
     char* value;
     time_t expireAt;
     struct Node* next;
+
+    struct Node *lruPrev;
+    struct Node *lruNext;
 } Node;
 
 typedef struct HashTable {
     int size;
     int count;
+    int capacity;
     Node** table;
+    Node *lruHead;
+    Node *lruTail;
 } HashTable;
 
 
-HashTable* createTable(int size);
+HashTable* createTable(int size, int capacity);
 void freeTable(HashTable* ht);
 int htInsert(HashTable* ht, const char* key, const char* value, int seconds);
 int htInsertAt(HashTable* ht, const char* key, const char* value, time_t expireAt);
@@ -29,4 +35,5 @@ int resize(HashTable* ht);
 int shrink(HashTable* ht);
 int isExpired(Node* node);
 int htIncr(HashTable* ht, const char* key, int by);
+void lruPurgeExpiredTail(HashTable *ht, int max_checks);
 #endif

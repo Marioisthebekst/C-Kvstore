@@ -226,6 +226,7 @@ void DECR(HashTable* ht) {
     handleIncrDecr(ht, -1, "DECR");
 }
 
+
 void runRepl(HashTable* ht) {
     while(1) {
         char input[BUFFER_SIZE]; 
@@ -238,6 +239,7 @@ void runRepl(HashTable* ht) {
             }
         char* command = strtok(input, " ");
         if(command != NULL) {
+            lruPurgeExpiredTail(ht, 5);
             if(strcmp(command, "SET") == 0) {
                 if(SET(ht, 0)) {
                     printf("Key Set Successfully!\n");

@@ -10,13 +10,13 @@
 void testCreateFree(void) {
     printf("--- test_create_free ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
-    assert(ht->size == 16);
+    assert(ht->size == 10);
     assert(ht->count == 0);
     freeTable(ht);
 
-    HashTable* ht2 = createTable(100);
+    HashTable* ht2 = createTable(100, 0);
     assert(ht2 != NULL);
     assert(ht2->size == 100);
     freeTable(ht2);
@@ -29,7 +29,7 @@ void testCreateFree(void) {
 void testInsertGet(void) {
     printf("--- test_insert_get ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     assert(htInsertAt(NULL, "key", "val", 0) == 0);
@@ -68,7 +68,7 @@ void testInsertGet(void) {
 void testDelete(void) {
     printf("--- test_delete ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     assert(htDelete(NULL, "key") == 0);
@@ -102,9 +102,9 @@ void testDelete(void) {
 void testResizeShrink(void) {
     printf("--- test_resize_shrink ---\n");
 
-    HashTable* ht = createTable(4);
+    HashTable* ht = createTable(4, 0);
     assert(ht != NULL);
-    assert(ht->size == 16);
+    assert(ht->size == 5);
 
     char key[16];
     for (int i = 0; i < 12; i++) {
@@ -112,8 +112,8 @@ void testResizeShrink(void) {
         assert(htInsertAt(ht, key, "v", 0) == 1);
     }
     assert(ht->count == 12);
-    assert(ht->size == 32);
-    printf("[PASS] resize triggers past MAX_LOAD_FACTOR (16 -> 32)\n");
+    assert(ht->size == 20);
+    printf("[PASS] resize triggers past MAX_LOAD_FACTOR (5 -> 20)\n");
 
     for (int i = 0; i < 12; i++) {
         snprintf(key, sizeof(key), "k%d", i);
@@ -129,7 +129,7 @@ void testResizeShrink(void) {
     }
     assert(ht->count == 0);
     printf("[PASS] shrink does not go below INITIAL_CAPACITY (size=%d)\n", ht->size);
-    assert(ht->size >= 16);
+    assert(ht->size >= 5);
 
     freeTable(ht);
     printf("[PASS] resize_shrink\n");
@@ -138,7 +138,7 @@ void testResizeShrink(void) {
 void testTtlRelative(void) {
     printf("--- test_ttl_relative ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     assert(htInsert(ht, "session", "abc123", 100) == 1);
@@ -160,7 +160,7 @@ void testTtlRelative(void) {
 void testTtlAbsolute(void) {
     printf("--- test_ttl_absolute ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     time_t future = time(NULL) + 1000;
@@ -183,7 +183,7 @@ void testTtlAbsolute(void) {
 void testIncrDecr(void) {
     printf("--- test_incr_decr ---\n");
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     assert(htIncr(ht, "counter", 1) == 1);
@@ -211,6 +211,65 @@ void testIncrDecr(void) {
     printf("[PASS] incr_decr\n");
 }
 
+void testLruEviction(void) {
+    printf("--- test_lru_eviction ---\n");
+
+    HashTable* ht = createTable(4, 3);
+    assert(ht != NULL);
+    assert(ht->capacity == 3);
+
+    assert(htInsertAt(ht, "a", "1", 0) == 1);
+    assert(htInsertAt(ht, "b", "2", 0) == 1);
+    assert(htInsertAt(ht, "c", "3", 0) == 1);
+    assert(ht->count == 3);
+    printf("[PASS] fills up to capacity without eviction\n");
+
+    char* touched = htGet(ht, "a");
+    assert(touched != NULL);
+    free(touched);
+
+    assert(htInsertAt(ht, "d", "4", 0) == 1);
+    assert(ht->count == 3);
+    assert(htGet(ht, "b") == NULL);
+    printf("[PASS] inserting past capacity evicts the least recently used key\n");
+
+    char* va = htGet(ht, "a");
+    assert(va != NULL && strcmp(va, "1") == 0);
+    free(va);
+
+    char* vc = htGet(ht, "c");
+    assert(vc != NULL && strcmp(vc, "3") == 0);
+    free(vc);
+
+    char* vd = htGet(ht, "d");
+    assert(vd != NULL && strcmp(vd, "4") == 0);
+    free(vd);
+    printf("[PASS] recently used and newly inserted keys survive eviction\n");
+
+    freeTable(ht);
+
+    HashTable* stress = createTable(4, 10);
+    assert(stress != NULL);
+    char key[16], val[16];
+    for (int i = 0; i < 500; i++) {
+        snprintf(key, sizeof(key), "k%d", i);
+        snprintf(val, sizeof(val), "v%d", i);
+        assert(htInsertAt(stress, key, val, 0) == 1);
+
+        if (i % 3 == 0) {
+            int touchIdx = (i > 5) ? i - 5 : 0;
+            snprintf(key, sizeof(key), "k%d", touchIdx);
+            char* v = htGet(stress, key);
+            free(v);
+        }
+        assert(stress->count <= 10);
+    }
+    assert(stress->count == 10);
+    freeTable(stress);
+    printf("[PASS] 500 inserts with interleaved reads never exceed capacity (run under ASan to confirm no leaks)\n");
+
+    printf("[PASS] lru_eviction\n");
+}
 void testReplIntegration(void) {
     printf("--- test_repl_integration ---\n");
 
@@ -241,7 +300,7 @@ void testReplIntegration(void) {
     FILE* redirected = freopen("test_repl_input.txt", "r", stdin);
     assert(redirected != NULL);
 
-    HashTable* ht = createTable(10);
+    HashTable* ht = createTable(10, 0);
     assert(ht != NULL);
 
     printf("=== REPL session start ===\n");
@@ -256,7 +315,7 @@ void testSaveLoad(void) {
     printf("--- test_save_load ---\n");
     const char* filename = "test_persist.txt";
 
-    HashTable* ht1 = createTable(10);
+    HashTable* ht1 = createTable(10, 0);
     assert(ht1 != NULL);
     assert(htInsertAt(ht1, "plain", "no_ttl", 0) == 1);
     assert(htInsert(ht1, "relative", "expires_later", 500) == 1);
@@ -266,7 +325,7 @@ void testSaveLoad(void) {
     SAVE(ht1, (char*)filename);
     freeTable(ht1);
 
-    HashTable* ht2 = createTable(10);
+    HashTable* ht2 = createTable(10, 0);
     assert(ht2 != NULL);
     LOAD(ht2, (char*)filename);
 

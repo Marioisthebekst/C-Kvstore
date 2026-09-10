@@ -1,12 +1,15 @@
 #define _POSIX_C_SOURCE 200809L
 #include "db.h"
 #include <stdio.h>
+static void lruDetach(HashTable *ht, Node *node);
+static void lruAttachHead(HashTable *ht, Node *node);
+static void lruTouch(HashTable *ht, Node *node);
 
 const float MAX_LOAD_FACTOR = 0.7;
 const float MIN_LOAD_FACTOR = 0.2;
-const int INITIAL_CAPACITY = 16;
+const int INITIAL_CAPACITY = 5;
 const long HASH = 5381;
-HashTable* createTable(int size) {
+HashTable* createTable(int size, int capacity) {
     if(size <= INITIAL_CAPACITY) {
         size = INITIAL_CAPACITY;
     }
@@ -22,7 +25,9 @@ HashTable* createTable(int size) {
         return NULL;
     }
     table->count = 0;
-
+    table->lruHead = NULL;
+    table-> lruTail = NULL;
+    table->capacity = capacity;
     return table;
 }
 
@@ -104,6 +109,23 @@ int shrink(HashTable* ht) {
     if (ht == NULL || ht->size <= INITIAL_CAPACITY) return 0;
     return rehashTable(ht, ht->size / 2);
 }
+
+void lruPurgeExpiredTail(HashTable *ht, int max_checks) {
+    if (ht == NULL) return;
+    Node *curr = ht->lruTail;
+    int checked = 0;
+
+    while (curr != NULL && checked < max_checks) {
+        Node *prev = curr->lruPrev; 
+        if (isExpired(curr)) {
+            htDelete(ht, curr->key);
+        }
+        curr = prev;
+        checked++;
+    }
+}
+
+
 int htInsertAt(HashTable* ht, const char* key, const char* value, time_t expireAt) {
     if (ht == NULL || key == NULL || value == NULL) {
         return 0;
@@ -116,6 +138,7 @@ int htInsertAt(HashTable* ht, const char* key, const char* value, time_t expireA
             free(current->value);
             current->value = strdup(value);
             current->expireAt = expireAt;
+            lruTouch(ht, current);
             return 1;
         }
         current = current->next;
@@ -139,6 +162,10 @@ int htInsertAt(HashTable* ht, const char* key, const char* value, time_t expireA
     if ((float)ht->count / ht->size > MAX_LOAD_FACTOR) {
         resize(ht);
     }
+    if (ht->capacity > 0 && ht->count > ht->capacity) {
+    htDelete(ht, ht->lruTail->key);
+    }
+    lruAttachHead(ht, newNode);
 
     return 1;
 }
@@ -165,7 +192,7 @@ char* htGet(HashTable* ht, const char* key) {
                 htDelete(ht, key);
                 return NULL;
             }
-
+            lruTouch(ht, current);
             return strdup(current->value);
         }
         current = current->next;
@@ -183,8 +210,8 @@ int htDelete(HashTable* ht, const char* key) {
         Node* current = *current_ptr;
         if (strcmp(current->key, key) == 0) {
             *current_ptr = current->next;
+            lruDetach(ht, current);
             freeNode(current);
-            
             ht->count--;
             if ((float)ht->count / ht->size < MIN_LOAD_FACTOR) {
                 shrink(ht);
@@ -229,4 +256,51 @@ int htIncr(HashTable* ht, const char* key, int by) {
     return htInsertAt(ht, key, value, key != NULL && target != NULL ? target->expireAt : 0);
 
 
+}
+
+static void lruDetach(HashTable *ht, Node *node) {
+    if (ht == NULL || node == NULL) {
+        return;
+    }
+
+    if (node->lruPrev != NULL) {
+        node->lruPrev->lruNext = node->lruNext;
+    } else {
+        ht->lruHead = node->lruNext;
+    }
+
+    if (node->lruNext != NULL) {
+        node->lruNext->lruPrev = node->lruPrev;
+    } else {
+        ht->lruTail = node->lruPrev;
+    }
+
+    node->lruPrev = NULL;
+    node->lruNext = NULL;
+}
+
+static void lruAttachHead(HashTable *ht, Node *node) {
+    if (ht == NULL || node == NULL) {
+        return;
+    }
+
+    node->lruPrev = NULL;
+    node->lruNext = ht->lruHead;
+
+    if (ht->lruHead != NULL) {
+        ht->lruHead->lruPrev = node;
+    }
+    ht->lruHead = node;
+
+    if (ht->lruTail == NULL) {
+        ht->lruTail = node;
+    }
+}
+
+static void lruTouch(HashTable *ht, Node *node) {
+    if (ht == NULL || node == NULL || node == ht->lruHead) {
+        return;
+    }
+    lruDetach(ht, node);
+    lruAttachHead(ht, node);
 }
