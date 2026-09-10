@@ -1,0 +1,12 @@
+
+*.o
+*.exe
+*.out
+test_runner
+kv_store
+
+*.txt
+*.db
+
+.vscode/
+.idea/
