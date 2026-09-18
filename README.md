@@ -59,6 +59,14 @@ Table saved successfully!
 
 ---
 
+## 🧪 Testing & Memory Safety
+
+The project includes an automated test suite verifying core hash table operations, TTL expiration, LRU eviction, CLI parsing, and persistence (SAVE/LOAD). Every push runs under AddressSanitizer via CI. Memory safety was additionally verified with **Valgrind**, confirming zero memory leaks:
+
+![Valgrind Test Report](assets/valgrind.png)
+
+---
+
 ## 🧠 LRU Eviction
 
 The store is created with `createTable(size, capacity)`: `size` is the initial hash table bucket count, and `capacity` is the maximum number of live keys the store will hold. Once the store is full, inserting a new key evicts the least recently used one first — both `GET` and `SET` count as a "use" and move a key back to the front of the eviction order. Pass `capacity <= 0` for an unbounded store (the default used throughout the test suite). Both values are configurable from the command line — see the Command-Line Options section below.
@@ -110,11 +118,13 @@ c-kvstore/
 ├── include/
 │   ├── db.h
 │   ├── repl.h
-│   ├──test.h
+│   ├── test.h
 │   └── cli.h
 ├── test/
 │   ├── test.c        - Unit and integration test suite
 │   └── testMain.c    - Test runner entry point (kept separate from src/main.c)
+├── assets/
+│   └── valgrind.png  - Valgrind memory-safety report referenced above
 ├── Makefile
 ├── .gitignore
 ├── LICENSE
